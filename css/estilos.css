@@ -84,11 +84,12 @@ button.peligro { color: var(--error); margin-top: 16px; width: 100%; }
 /* Tablero */
 .tablero-wrap { position: relative; }
 .tablero {
-  --n: 8; display: grid; grid-template-columns: repeat(var(--n), 1fr); aspect-ratio: 1;
+  --n: 8; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); grid-template-rows: repeat(var(--n), minmax(0, 1fr)); aspect-ratio: 1;
   border: 3px solid var(--linea); border-radius: 8px; overflow: hidden; user-select: none; touch-action: none;
   background: var(--linea); gap: 1px;
 }
 .celda {
+  min-width: 0; min-height: 0; overflow: hidden;
   position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer;
   font-size: calc(min(560px, 100vw - 32px) / var(--n) * .5); line-height: 1; color: #2a2620;
 }
