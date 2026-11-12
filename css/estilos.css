@@ -149,6 +149,7 @@ button.peligro { background: none; color: var(--error); padding-left: 0; margin-
 .controles { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; margin-top: 16px; }
 .controles button { padding: 12px 8px; }
 .controles .pista { background: var(--tinta); color: var(--sobre-tinta); }
+.controles.fin-barra { grid-template-columns: 1fr 1fr; }
 .botones { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .botones.ancho { margin-top: 10px; }
 .botones.ancho button { flex: 1; }

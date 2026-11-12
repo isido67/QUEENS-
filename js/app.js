@@ -93,6 +93,7 @@
     $("#j-errores").dataset.vidas = "";
     $(".controles").style.gridTemplateColumns = comp ? "1fr 1fr" : "";
     $("#fin").classList.add("oculto");
+    modoFin(false);
     $("#explicacion").classList.add("oculto");
     $("#tablero").classList.remove("ganado");
     construirTablero($("#tablero"), puzzle.N, puzzle.regiones);
@@ -377,11 +378,24 @@
       guardar("diario", d);
     }
     $("#fin-texto").textContent = txt;
-    $("#fin-otro").textContent = J.diario ? "Volver" : "Otro puzzle";
+    const siguiente = J.diario ? "Volver al diario" : gano ? "Siguiente nivel" : "Probar otro";
+    $("#fin-otro").textContent = siguiente;
+    $("#fb-siguiente").textContent = siguiente;
     const demora = gano ? celebrar() : 250;
     setTimeout(() => $("#fin").classList.remove("oculto"), demora);
   }
-  $("#fin-revisar").onclick = () => $("#fin").classList.add("oculto");
+  // Al terminar, los controles del juego se cambian por "Ver resultado" y "Siguiente nivel"
+  function modoFin(activo) {
+    $(".controles:not(.fin-barra)").classList.toggle("oculto", activo);
+    $("#fin-barra").classList.toggle("oculto", !activo);
+    if (activo) {
+      $("#explicacion").classList.add("oculto");
+      $("#op-bloqueo").classList.add("oculto");
+    }
+  }
+  $("#fin-revisar").onclick = () => { $("#fin").classList.add("oculto"); modoFin(true); };
+  $("#fb-resultado").onclick = () => $("#fin").classList.remove("oculto");
+  $("#fb-siguiente").onclick = () => $("#fin-otro").onclick();
   $("#fin-otro").onclick = () => {
     if (J.diario) return $("#salir").onclick();
     const id = J.p.nivelId;
