@@ -97,6 +97,7 @@
     $("#explicacion").classList.add("oculto");
     $("#tablero").classList.remove("ganado");
     construirTablero($("#tablero"), puzzle.N, puzzle.regiones);
+    ponerCoordenadas(puzzle.N, !comp);
     pintar();
     clearInterval(relojId);
     relojId = setInterval(actualizarReloj, 250);
@@ -116,6 +117,16 @@
       if (e.dataset.vidas !== String(J.vidas)) { e.innerHTML = html; e.dataset.vidas = J.vidas; }
       e.setAttribute("aria-label", `${J.vidas} vidas`);
     } else { e.innerHTML = ""; e.dataset.vidas = ""; }
+  }
+
+  // Letras para columnas y números para filas (solo en práctica)
+  function ponerCoordenadas(N, mostrar) {
+    const wrap = $("#tablero").parentElement;
+    wrap.classList.toggle("con-coords", mostrar);
+    const cc = $("#coord-col"), cf = $("#coord-fila");
+    cc.style.setProperty("--n", N); cf.style.setProperty("--n", N);
+    cc.innerHTML = Array.from({ length: N }, (_, k) => `<span>${String.fromCharCode(65 + k)}</span>`).join("");
+    cf.innerHTML = Array.from({ length: N }, (_, k) => `<span>${k + 1}</span>`).join("");
   }
 
   function construirTablero(el, N, regiones) {

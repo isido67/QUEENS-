@@ -84,14 +84,15 @@
 
   const fila = (t, i) => Math.floor(i / t.N);
   const col = (t, i) => i % t.N;
-  const nombreCasilla = (t, i) => `fila ${fila(t, i) + 1}, columna ${col(t, i) + 1}`;
+  const letra = (k) => String.fromCharCode(65 + k);
+  const nombreCasilla = (t, i) => `la casilla ${letra(col(t, i))}${fila(t, i) + 1}`;
   const nombreRegion = (k) => `región ${COLORES[k % COLORES.length].nombre}`;
 
   function unidades(t) {
     if (t._u) return t._u;
     const u = [];
     t.filas.forEach((cs, k) => u.push({ tipo: "fila", k, cs, nombre: `la fila ${k + 1}`, corto: `${k + 1}` }));
-    t.cols.forEach((cs, k) => u.push({ tipo: "col", k, cs, nombre: `la columna ${k + 1}`, corto: `${k + 1}` }));
+    t.cols.forEach((cs, k) => u.push({ tipo: "col", k, cs, nombre: `la columna ${letra(k)}`, corto: `${letra(k)}` }));
     t.regs.forEach((cs, k) => u.push({ tipo: "reg", k, cs, nombre: `la ${nombreRegion(k)}`, corto: COLORES[k % COLORES.length].nombre }));
     t._u = u;
     return u;
@@ -161,7 +162,7 @@
       if (c.length === 1) {
         return {
           nivel: 1, colocar: [c[0]], eliminar: [], foco: u.cs,
-          texto: `En ${u.nombre} solo queda una casilla libre (${nombreCasilla(t, c[0])}), así que la reina tiene que ir ahí.`,
+          texto: `En ${u.nombre} solo queda libre ${nombreCasilla(t, c[0])}, así que la reina tiene que ir ahí.`,
         };
       }
     }
