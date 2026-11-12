@@ -6,18 +6,18 @@
   const VACIA = 0, X = 1, REINA = 2;
 
   const COLORES = [
-    { nombre: "morada",   hex: "#bba3e2" },
-    { nombre: "naranja",  hex: "#ffc992" },
-    { nombre: "azul",     hex: "#96beff" },
-    { nombre: "verde",    hex: "#b3dfa0" },
-    { nombre: "gris",     hex: "#dfdfdf" },
-    { nombre: "roja",     hex: "#ff7b60" },
-    { nombre: "amarilla", hex: "#e6f388" },
-    { nombre: "beige",    hex: "#b9b29e" },
-    { nombre: "rosada",   hex: "#dfa0bf" },
-    { nombre: "celeste",  hex: "#a3d2d8" },
-    { nombre: "lila",     hex: "#c9c3f2" },
-    { nombre: "menta",    hex: "#8fe0c5" },
+    { nombre: "rosada",    hex: "#f7c4d8" },
+    { nombre: "durazno",   hex: "#fcd2b6" },
+    { nombre: "lila",      hex: "#d6c6f3" },
+    { nombre: "menta",     hex: "#bfe6d3" },
+    { nombre: "celeste",   hex: "#c2daf5" },
+    { nombre: "frambuesa", hex: "#eb9fbc" },
+    { nombre: "crema",     hex: "#f5e6ad" },
+    { nombre: "lavanda",   hex: "#aeb0e6" },
+    { nombre: "coral",     hex: "#f5aa9e" },
+    { nombre: "pistacho",  hex: "#d2deb0" },
+    { nombre: "malva",     hex: "#d3a3d3" },
+    { nombre: "arena",     hex: "#e4d2c6" },
   ];
 
   const NIVELES = [
