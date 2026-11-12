@@ -9,7 +9,8 @@
   const guardar = (k, v) => { try { localStorage.setItem("reinas:" + k, JSON.stringify(v)); } catch (e) {} };
   const leer = (k, def) => { try { const v = localStorage.getItem("reinas:" + k); return v ? JSON.parse(v) : def; } catch (e) { return def; } };
 
-  const prefs = leer("prefs", { autoxPractica: true, autoxComp: false, regla: "muerte" });
+  const prefs = leer("prefs", { autoxPractica: true });
+  const VIDAS = 3;
 
   // ---------- Utilidades ----------
   function aviso(txt) {
@@ -40,7 +41,6 @@
     const d = b.dataset.ir;
     if (d === "practica" || d === "competitivo") { modoElegido = d; mostrarNiveles(); }
     else if (d === "diario") { mostrarDiario(); ir("diario"); }
-    else if (d === "editor") { iniciarEditor(); ir("editor"); }
     else if (d === "stats") { mostrarStats(); ir("stats"); }
     else ir(d);
   }));
@@ -48,7 +48,6 @@
   function mostrarNiveles() {
     const comp = modoElegido === "competitivo";
     $("#nivel-titulo").textContent = comp ? "Competitivo" : "Práctica guiada";
-    $("#opciones-comp").classList.toggle("oculto", !comp);
     const stats = leer("stats", {});
     const cont = $("#nivel-opciones");
     cont.innerHTML = "";
@@ -65,13 +64,6 @@
       };
       cont.appendChild(b);
     });
-    const ax = $("#op-autox");
-    ax.checked = comp ? prefs.autoxComp : prefs.autoxPractica;
-    ax.onchange = () => { if (comp) prefs.autoxComp = ax.checked; else prefs.autoxPractica = ax.checked; guardar("prefs", prefs); };
-    $$('input[name="reglaErr"]').forEach((r) => {
-      r.checked = r.value === prefs.regla;
-      r.onchange = () => { prefs.regla = r.value; guardar("prefs", prefs); };
-    });
     ir("nivel");
   }
 
@@ -86,9 +78,8 @@
       est: new Array(puzzle.N * puzzle.N).fill(VACIA),
       hist: [],
       auto: new Set(), // ✕ puestas automáticamente por reinas
-      errores: 0, penal: 0,
-      regla: prefs.regla,
-      autox: modo === "competitivo" ? prefs.autoxComp : prefs.autoxPractica,
+      errores: 0, vidas: VIDAS,
+      autox: modo === "competitivo" ? false : prefs.autoxPractica,
       inicio: Date.now(), fin: null, terminado: false,
       paso: null,
       ...extra,
@@ -97,6 +88,9 @@
     $("#j-modo").textContent = extra.diario ? "Diario" : comp ? "Competitivo" : "Práctica";
     $("#j-nivel").textContent = puzzle.nivelId ? nombreNivel(puzzle.nivelId) : "Personal";
     $("#b-pista").classList.toggle("oculto", comp);
+    $("#op-bloqueo").classList.toggle("oculto", comp);
+    $("#op-bloqueo input").checked = J.autox;
+    $("#j-errores").dataset.vidas = "";
     $(".controles").style.gridTemplateColumns = comp ? "1fr 1fr" : "";
     $("#fin").classList.add("oculto");
     $("#explicacion").classList.add("oculto");
@@ -110,14 +104,17 @@
   }
 
   function tiempo() {
-    return ((J.fin || Date.now()) - J.inicio) / 1000 + J.penal;
+    return ((J.fin || Date.now()) - J.inicio) / 1000;
   }
   function actualizarReloj() {
     if (!J) return;
     $("#j-reloj").textContent = fmt(tiempo());
     const e = $("#j-errores");
-    if (J.modo === "competitivo") e.textContent = J.regla === "penal" ? (J.errores ? `✕ ${J.errores} (+${J.penal}s)` : "") : "";
-    else e.textContent = "";
+    if (J.modo === "competitivo") {
+      const html = Array.from({ length: VIDAS }, (_, k) => `<span class="vida${k < J.vidas ? "" : " perdida"}"></span>`).join("");
+      if (e.dataset.vidas !== String(J.vidas)) { e.innerHTML = html; e.dataset.vidas = J.vidas; }
+      e.setAttribute("aria-label", `${J.vidas} vidas`);
+    } else { e.innerHTML = ""; e.dataset.vidas = ""; }
   }
 
   function construirTablero(el, N, regiones) {
@@ -164,19 +161,21 @@
     // devuelve false si el movimiento fue rechazado
     if (J.modo === "competitivo" && !J.p.solucion[i]) {
       J.errores++;
-      if (J.regla === "muerte") {
+      J.vidas--;
+      actualizarReloj();
+      const corazon = $("#j-errores").children[J.vidas];
+      if (corazon) corazon.classList.add("rompe");
+      if (J.vidas <= 0) {
         J.est[i] = REINA;
         pintar();
         $("#tablero").children[i].classList.add("mal");
-        terminar(false, "Esa reina no iba ahí.");
+        terminar(false, "Te quedaste sin vidas.");
         return false;
       }
-      J.penal += 10;
       const c = $("#tablero").children[i];
-      c.classList.add("mal");
-      setTimeout(() => c.classList.remove("mal"), 500);
-      aviso("Error: +10 segundos");
-      actualizarReloj();
+      c.classList.add("mal", "sacude");
+      setTimeout(() => c.classList.remove("mal", "sacude"), 450);
+      aviso(J.vidas === 1 ? "Esa reina no va ahí. Te queda 1 vida." : `Esa reina no va ahí. Te quedan ${J.vidas} vidas.`);
       return false;
     }
     J.est[i] = REINA;
@@ -258,6 +257,26 @@
     tab.addEventListener("pointercancel", () => { ini = null; });
   })();
 
+  // Interruptor de bloqueo automático (práctica)
+  $("#op-bloqueo input").addEventListener("change", (e) => {
+    if (!J) return;
+    J.autox = e.target.checked;
+    prefs.autoxPractica = J.autox;
+    guardar("prefs", prefs);
+    if (J.terminado) return;
+    guardarHist();
+    if (J.autox) {
+      for (let i = 0; i < J.est.length; i++) {
+        if (J.est[i] !== REINA) continue;
+        for (const k of J.t.ataque[i]) if (J.est[k] === VACIA) { J.est[k] = X; J.auto.add(k); }
+      }
+    } else {
+      for (const k of J.auto) if (J.est[k] === X) J.est[k] = VACIA;
+      J.auto.clear();
+    }
+    despuesDeMover();
+  });
+
   $("#b-deshacer").onclick = () => {
     if (!J || J.terminado || !J.hist.length) return;
     const h = J.hist.pop();
@@ -275,7 +294,6 @@
   $("#salir").onclick = () => {
     clearInterval(relojId);
     if (J && J.diario) { mostrarDiario(); ir("diario"); }
-    else if (J && J.propio) { ir("editor"); }
     else ir("inicio");
     J = null;
   };
@@ -359,13 +377,13 @@
       guardar("diario", d);
     }
     $("#fin-texto").textContent = txt;
-    $("#fin-otro").textContent = J.diario || J.propio ? "Volver" : "Otro puzzle";
+    $("#fin-otro").textContent = J.diario ? "Volver" : "Otro puzzle";
     const demora = gano ? celebrar() : 250;
     setTimeout(() => $("#fin").classList.remove("oculto"), demora);
   }
   $("#fin-revisar").onclick = () => $("#fin").classList.add("oculto");
   $("#fin-otro").onclick = () => {
-    if (J.diario || J.propio) return $("#salir").onclick();
+    if (J.diario) return $("#salir").onclick();
     const id = J.p.nivelId;
     const p = Motor.generar(id);
     empezar({ ...p, nivelId: id }, J.modo);
@@ -485,7 +503,7 @@
         `<span class="estado${r ? (r.ok ? " ok" : " malo") : ""}">${r ? (r.ok ? fmt(r.seg) : "Perdido") : "Jugar"}</span>`;
       b.onclick = () => {
         const p = Motor.generar(nivelId, Motor.semillaDeTexto("reinas:" + clave));
-        empezar({ ...p, nivelId }, "competitivo", { diario: clave, regla: "penal" });
+        empezar({ ...p, nivelId }, "competitivo", { diario: clave });
         $("#j-modo").textContent = (k === 0 ? "Hoy" : DIAS[d.getDay()] + " " + d.getDate() + "/" + (d.getMonth() + 1));
       };
       cont.appendChild(b);
@@ -503,128 +521,6 @@
       else break;
     }
     return n;
-  }
-
-  // ---------- Editor ----------
-  const ED = { N: 8, reg: [], color: 0, valido: null };
-  function iniciarEditor(codigo) {
-    const sel = $("#ed-tam");
-    if (!sel.options.length) {
-      for (let n = 5; n <= 11; n++) sel.add(new Option(n + "×" + n, n));
-      sel.onchange = () => { ED.N = +sel.value; ED.reg = new Array(ED.N * ED.N).fill(-1); ED.color = 0; dibujarEditor(); };
-    }
-    if (codigo) {
-      ED.N = codigo.N; ED.reg = codigo.regiones.slice();
-    } else if (ED.reg.length !== ED.N * ED.N) {
-      ED.reg = new Array(ED.N * ED.N).fill(-1);
-    }
-    sel.value = ED.N;
-    dibujarEditor();
-    mostrarGuardados();
-    if (codigo) verificar();
-  }
-  function invalidar() {
-    ED.valido = null;
-    $("#ed-estado").textContent = "";
-    $("#ed-estado").className = "ed-estado";
-    ["#ed-practicar", "#ed-competir", "#ed-guardar", "#ed-compartir"].forEach((s) => ($(s).disabled = true));
-  }
-  function dibujarEditor() {
-    const pal = $("#ed-paleta");
-    pal.innerHTML = "";
-    for (let k = 0; k < ED.N; k++) {
-      const b = document.createElement("button");
-      b.className = "color" + (k === ED.color ? " sel" : "");
-      b.style.background = COLORES[k].hex;
-      b.title = COLORES[k].nombre;
-      b.onclick = () => { ED.color = k; dibujarEditor(); };
-      pal.appendChild(b);
-    }
-    construirTablero($("#ed-tablero"), ED.N, ED.reg);
-    invalidar();
-  }
-  (function entradaEditor() {
-    const tab = $("#ed-tablero");
-    let pintando = false;
-    const pintarEn = (e) => {
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      const c = el && el.closest(".celda");
-      if (!c || !tab.contains(c)) return;
-      const i = +c.dataset.i;
-      if (ED.reg[i] === ED.color) return;
-      ED.reg[i] = ED.color;
-      construirTablero(tab, ED.N, ED.reg);
-      invalidar();
-    };
-    tab.addEventListener("pointerdown", (e) => { pintando = true; tab.setPointerCapture(e.pointerId); pintarEn(e); });
-    tab.addEventListener("pointermove", (e) => { if (pintando) pintarEn(e); });
-    tab.addEventListener("pointerup", () => (pintando = false));
-    tab.addEventListener("pointercancel", () => (pintando = false));
-  })();
-  $("#ed-borrar").onclick = () => { ED.reg = new Array(ED.N * ED.N).fill(-1); dibujarEditor(); };
-
-  function verificar() {
-    const est = $("#ed-estado");
-    const malo = (t) => { est.textContent = t; est.className = "ed-estado malo"; };
-    if (ED.reg.includes(-1)) return malo("Faltan casillas por pintar.");
-    const usados = new Set(ED.reg);
-    if (usados.size !== ED.N) return malo(`Un tablero de ${ED.N}×${ED.N} necesita exactamente ${ED.N} colores (tienes ${usados.size}).`);
-    const t = Motor.crearTablero(ED.N, ED.reg);
-    const c = Motor.contarSoluciones(t, 2);
-    if (c.n === 0) return malo("Este puzzle no tiene solución. Revisa que las regiones estén bien pintadas.");
-    if (c.n > 1) return malo("Tiene más de una solución. Probablemente hay una casilla con el color equivocado.");
-    const r = Motor.resolver(t, null, 5);
-    ED.valido = { N: ED.N, regiones: ED.reg.slice(), solucion: c.solucion, nivel: r.ok ? r.nivel : 6 };
-    est.textContent = r.ok
-      ? `✓ Solución única. Técnica más difícil: ${TECNICAS[r.nivel]} (nivel ${r.nivel}).`
-      : "✓ Solución única, pero requiere adivinar más allá de las técnicas que explica el entrenador.";
-    est.className = "ed-estado bien";
-    ["#ed-practicar", "#ed-competir", "#ed-guardar", "#ed-compartir"].forEach((s) => ($(s).disabled = false));
-  }
-  $("#ed-verificar").onclick = verificar;
-  $("#ed-practicar").onclick = () => ED.valido && empezar(ED.valido, "practica", { propio: true });
-  $("#ed-competir").onclick = () => ED.valido && empezar(ED.valido, "competitivo", { propio: true });
-  $("#ed-guardar").onclick = () => {
-    if (!ED.valido) return;
-    const nombre = (prompt("Nombre para este puzzle:", "Puzzle " + new Date().toLocaleDateString("es-CL")) || "").trim();
-    if (!nombre) return;
-    const mios = leer("mios", []);
-    mios.unshift({ nombre, codigo: Motor.codificar(ED.N, ED.reg), nivel: ED.valido.nivel });
-    guardar("mios", mios);
-    mostrarGuardados();
-    aviso("Guardado");
-  };
-  $("#ed-compartir").onclick = async () => {
-    const url = location.href.split("#")[0] + "#p=" + Motor.codificar(ED.N, ED.reg);
-    try { await navigator.clipboard.writeText(url); aviso("Link copiado"); }
-    catch (e) { prompt("Copia este link:", url); }
-  };
-  function mostrarGuardados() {
-    const cont = $("#ed-guardados");
-    const mios = leer("mios", []);
-    cont.innerHTML = mios.length ? "" : '<p class="nota">Todavía no guardas puzzles.</p>';
-    mios.forEach((m, idx) => {
-      const p = Motor.decodificar(m.codigo);
-      if (!p) return;
-      const fila = document.createElement("div");
-      fila.className = "guardado";
-      const mini = document.createElement("div");
-      mini.className = "mini";
-      mini.style.gridTemplateColumns = `repeat(${p.N}, 1fr)`;
-      p.regiones.forEach((g) => { const s = document.createElement("span"); s.style.background = COLORES[g].hex; mini.appendChild(s); });
-      const nom = document.createElement("div");
-      nom.className = "nom";
-      nom.innerHTML = `${m.nombre.replace(/[<>&]/g, "")}<small>${p.N}×${p.N}${m.nivel <= 5 ? ", " + TECNICAS[m.nivel].toLowerCase() : ""}</small>`;
-      const jugar = document.createElement("button");
-      jugar.textContent = "Abrir";
-      jugar.onclick = () => { iniciarEditor(p); window.scrollTo(0, 0); };
-      const borrar = document.createElement("button");
-      borrar.className = "sec";
-      borrar.textContent = "Borrar";
-      borrar.onclick = () => { if (confirm("¿Borrar " + m.nombre + "?")) { mios.splice(idx, 1); guardar("mios", mios); mostrarGuardados(); } };
-      fila.append(mini, nom, jugar, borrar);
-      cont.appendChild(fila);
-    });
   }
 
   // ---------- Estadísticas ----------
@@ -674,18 +570,14 @@
     [...demo.children].forEach((c, i) => { if (p.solucion[i]) c.innerHTML = '<span class="q"></span>'; });
     const stats = leer("stats", {});
     const mejores = NIVELES.map((n) => (stats["comp-" + n.id] || {}).mejor).filter((x) => x != null);
-    $("#meta-comp").textContent = mejores.length ? "Récord " + fmt(Math.min(...mejores)) : "";
+    $("#meta-comp").textContent = mejores.length ? "Récord " + fmt(Math.min(...mejores)) : "Sin récord aún";
+    const racha = rachaDiaria();
+    $("#meta-racha").textContent = racha ? `Racha de ${racha} día${racha > 1 ? "s" : ""}` : "Sin racha aún";
     const hoy = leer("diario", {})[hoyClave()];
-    $("#meta-diario").textContent = hoy && hoy.ok ? "Hoy " + fmt(hoy.seg) : nombreNivel(NIVEL_POR_DIA[new Date().getDay()]);
+    $("#meta-diario").textContent = hoy && hoy.ok ? "Hoy en " + fmt(hoy.seg) : "Hoy: " + nombreNivel(NIVEL_POR_DIA[new Date().getDay()]).toLowerCase();
   }
   const irOriginal = ir;
   ir = function (v) { if (v === "inicio") portada(); irOriginal(v); };
   portada();
 
-  // ---------- Link compartido ----------
-  const m = /#p=([^&]+)/.exec(location.hash);
-  if (m) {
-    const p = Motor.decodificar(decodeURIComponent(m[1]));
-    if (p) { iniciarEditor(p); ir("editor"); }
-  }
 })();
