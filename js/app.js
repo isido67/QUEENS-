@@ -28,7 +28,7 @@
   }
   const nombreNivel = (id) => (NIVELES.find((n) => n.id === id) || {}).nombre || "Personal";
 
-  function ir(vista) {
+  let ir = function (vista) {
     $$(".vista").forEach((v) => v.classList.remove("activa"));
     $("#v-" + vista).classList.add("activa");
     window.scrollTo(0, 0);
@@ -56,8 +56,8 @@
       const b = document.createElement("button");
       b.className = "nivel-btn";
       const s = stats["comp-" + n.id];
-      b.innerHTML = `<b>${n.nombre}</b><small>${n.tam[0]}×${n.tam[0]} a ${n.tam[1]}×${n.tam[1]} · ${TECNICAS[n.max]}</small>` +
-        (comp && s && s.mejor != null ? `<span class="mejor">Récord ${fmt(s.mejor)}</span>` : "");
+      b.innerHTML = `<b>${n.nombre}</b><small>${n.tam[0]}×${n.tam[0]} a ${n.tam[1]}×${n.tam[1]}, hasta ${TECNICAS[n.max].toLowerCase()}</small>` +
+        (comp && s && s.mejor != null ? `<span class="mejor">${fmt(s.mejor)}</span>` : "");
       b.onclick = () => {
         const p = Motor.generar(n.id);
         if (!p) return aviso("No pude generar el puzzle, intenta de nuevo.");
@@ -93,7 +93,7 @@
       ...extra,
     };
     const comp = modo === "competitivo";
-    $("#j-modo").textContent = comp ? "⏱️ Competitivo" : extra.diario ? "📅 Diario" : "🎓 Práctica";
+    $("#j-modo").textContent = extra.diario ? "Diario" : comp ? "Competitivo" : "Práctica";
     $("#j-nivel").textContent = puzzle.nivelId ? nombreNivel(puzzle.nivelId) : "Personal";
     $("#b-pista").classList.toggle("oculto", comp);
     $(".controles").style.gridTemplateColumns = comp ? "1fr 1fr" : "";
@@ -143,7 +143,7 @@
       const c = celdas[i], v = J.est[i];
       const antes = c.dataset.v;
       if (antes !== String(v)) {
-        c.innerHTML = v === REINA ? '<span class="q">👑</span>' : v === X ? '<span class="x">✕</span>' : "";
+        c.innerHTML = v === REINA ? '<span class="q"></span>' : v === X ? '<span class="x">×</span>' : "";
         c.dataset.v = v;
       }
       const errorPractica = J.modo !== "competitivo" && v === REINA && !J.p.solucion[i];
@@ -293,7 +293,7 @@
       return;
     }
     J.paso = paso;
-    $("#exp-tecnica").textContent = paso.nivel < 0 ? "Corrección" : `Nivel ${paso.nivel} · ${TECNICAS[paso.nivel]}`;
+    $("#exp-tecnica").textContent = paso.nivel < 0 ? "Corrección" : `${TECNICAS[paso.nivel]} (nivel ${paso.nivel})`;
     $("#exp-texto").textContent = paso.texto;
     $("#explicacion").classList.remove("oculto");
     pintar();
@@ -321,14 +321,14 @@
     actualizarReloj();
     const seg = tiempo();
     const comp = J.modo === "competitivo";
-    $("#fin-emoji").textContent = gano ? "👑" : "💥";
+    $("#fin-emoji").classList.toggle("perdio", !gano);
     $("#fin-titulo").textContent = gano ? "¡Resuelto!" : "Perdiste";
     let txt = gano ? `Tiempo: ${fmt(seg)}` : motivo || "";
     if (gano && J.errores) txt += `\nErrores: ${J.errores}`;
     const clave = J.diario ? "diario" : J.p.nivelId ? (comp ? "comp-" : "prac-") + J.p.nivelId : null;
     if (clave) {
       const r = registrar(clave, gano, seg);
-      if (gano && comp && r.record) txt += "\n🏆 ¡Nuevo récord!";
+      if (gano && comp && r.record) txt += "\nNuevo récord";
       else if (gano && comp && r.mejor != null) txt += `\nRécord: ${fmt(r.mejor)}`;
     }
     if (J.diario) {
@@ -384,11 +384,11 @@
       const b = document.createElement("button");
       b.className = "dia" + (k === 0 ? " hoy" : "");
       b.innerHTML = `<span>${k === 0 ? "Hoy" : DIAS[d.getDay()] + " " + d.getDate() + "/" + (d.getMonth() + 1)}<br><small>${nombreNivel(nivelId)}</small></span>` +
-        `<span class="estado">${r ? (r.ok ? "✅ " + fmt(r.seg) : "💥") : "▶"}</span>`;
+        `<span class="estado${r ? (r.ok ? " ok" : " malo") : ""}">${r ? (r.ok ? fmt(r.seg) : "Perdido") : "Jugar"}</span>`;
       b.onclick = () => {
         const p = Motor.generar(nivelId, Motor.semillaDeTexto("reinas:" + clave));
         empezar({ ...p, nivelId }, "competitivo", { diario: clave, regla: "penal" });
-        $("#j-modo").textContent = "📅 " + (k === 0 ? "Hoy" : DIAS[d.getDay()] + " " + d.getDate() + "/" + (d.getMonth() + 1));
+        $("#j-modo").textContent = (k === 0 ? "Hoy" : DIAS[d.getDay()] + " " + d.getDate() + "/" + (d.getMonth() + 1));
       };
       cont.appendChild(b);
     }
@@ -516,13 +516,13 @@
       p.regiones.forEach((g) => { const s = document.createElement("span"); s.style.background = COLORES[g].hex; mini.appendChild(s); });
       const nom = document.createElement("div");
       nom.className = "nom";
-      nom.innerHTML = `${m.nombre.replace(/[<>&]/g, "")}<small>${p.N}×${p.N}${m.nivel <= 5 ? " · " + TECNICAS[m.nivel] : ""}</small>`;
+      nom.innerHTML = `${m.nombre.replace(/[<>&]/g, "")}<small>${p.N}×${p.N}${m.nivel <= 5 ? ", " + TECNICAS[m.nivel].toLowerCase() : ""}</small>`;
       const jugar = document.createElement("button");
       jugar.textContent = "Abrir";
       jugar.onclick = () => { iniciarEditor(p); window.scrollTo(0, 0); };
       const borrar = document.createElement("button");
       borrar.className = "sec";
-      borrar.textContent = "🗑";
+      borrar.textContent = "Borrar";
       borrar.onclick = () => { if (confirm("¿Borrar " + m.nombre + "?")) { mios.splice(idx, 1); guardar("mios", mios); mostrarGuardados(); } };
       fila.append(mini, nom, jugar, borrar);
       cont.appendChild(fila);
@@ -556,17 +556,33 @@
     const dia = document.createElement("div");
     dia.className = "stat-caja";
     const sd = stats.diario;
-    dia.innerHTML = `<h4>📅 Desafío diario</h4><div class="stat-grid"><div><b>${rachaDiaria()}</b><small>racha de días</small></div><div><b>${sd ? sd.ganados : 0}</b><small>resueltos</small></div><div><b>${sd && sd.mejor != null ? fmt(sd.mejor) : "–"}</b><small>mejor tiempo</small></div></div>`;
+    dia.innerHTML = `<h4>Desafío diario</h4><div class="stat-grid"><div><b>${rachaDiaria()}</b><small>racha de días</small></div><div><b>${sd ? sd.ganados : 0}</b><small>resueltos</small></div><div><b>${sd && sd.mejor != null ? fmt(sd.mejor) : "–"}</b><small>mejor tiempo</small></div></div>`;
     cont.appendChild(dia);
-    NIVELES.forEach((n) => cont.appendChild(caja("⏱️ Competitivo · " + n.nombre, stats["comp-" + n.id], true)));
+    NIVELES.forEach((n) => cont.appendChild(caja("Competitivo, " + n.nombre.toLowerCase(), stats["comp-" + n.id], true)));
     const prac = NIVELES.reduce((a, n) => a + ((stats["prac-" + n.id] || {}).ganados || 0), 0);
-    cont.appendChild(caja("🎓 Práctica", { ganados: prac, jugados: prac, tiempos: [] }, false));
+    cont.appendChild(caja("Práctica", { ganados: prac, jugados: prac, tiempos: [] }, false));
   }
   $("#stats-borrar").onclick = () => {
     if (!confirm("¿Borrar todas tus estadísticas y resultados del diario?")) return;
     guardar("stats", {}); guardar("diario", {});
     mostrarStats();
   };
+
+  // ---------- Portada ----------
+  function portada() {
+    const demo = $("#demo");
+    const p = Motor.generar("facil", 20261112, 5);
+    construirTablero(demo, p.N, p.regiones);
+    [...demo.children].forEach((c, i) => { if (p.solucion[i]) c.innerHTML = '<span class="q"></span>'; });
+    const stats = leer("stats", {});
+    const mejores = NIVELES.map((n) => (stats["comp-" + n.id] || {}).mejor).filter((x) => x != null);
+    $("#meta-comp").textContent = mejores.length ? "Récord " + fmt(Math.min(...mejores)) : "";
+    const hoy = leer("diario", {})[hoyClave()];
+    $("#meta-diario").textContent = hoy && hoy.ok ? "Hoy " + fmt(hoy.seg) : nombreNivel(NIVEL_POR_DIA[new Date().getDay()]);
+  }
+  const irOriginal = ir;
+  ir = function (v) { if (v === "inicio") portada(); irOriginal(v); };
+  portada();
 
   // ---------- Link compartido ----------
   const m = /#p=([^&]+)/.exec(location.hash);
