@@ -204,3 +204,26 @@ select { font: inherit; padding: 10px 12px; border-radius: 10px; border: 0; back
   padding: 10px 16px; border-radius: 10px; font-size: 14px; opacity: 0; pointer-events: none; transition: .2s; max-width: 90vw; text-align: center;
 }
 .aviso.ver { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- Celebración ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .tablero.ganado .celda { animation: onda .6s cubic-bezier(.3, .7, .4, 1) var(--d, 0ms) both; }
+  .tablero.ganado .celda .q { animation: salto .55s cubic-bezier(.3, 1.8, .5, 1) var(--dq, 0ms) both; }
+  .fin:not(.oculto) { animation: velo .3s ease-out both; }
+  .fin:not(.oculto) .fin-caja { animation: sube .45s cubic-bezier(.2, 1.4, .4, 1) .05s both; }
+  .fin:not(.oculto) .fin-emoji { animation: cae .6s cubic-bezier(.3, 1.6, .5, 1) .15s both; }
+}
+@keyframes onda {
+  0% { transform: scale(1); filter: none; }
+  35% { transform: scale(.86); filter: brightness(1.12) saturate(1.25); border-radius: 22%; }
+  100% { transform: scale(1); filter: none; }
+}
+@keyframes salto {
+  0% { transform: scale(1); }
+  45% { transform: translateY(-22%) scale(1.5) rotate(-10deg); filter: drop-shadow(0 3px 0 rgba(0,0,0,.18)); }
+  100% { transform: scale(1); }
+}
+@keyframes velo { from { opacity: 0; } }
+@keyframes sube { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+@keyframes cae { from { opacity: 0; transform: translateY(-24px) rotate(-20deg) scale(.6); } }
+.confeti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 50; }

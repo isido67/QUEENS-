@@ -180,6 +180,7 @@
       return false;
     }
     J.est[i] = REINA;
+    J.ultimo = i;
     J.auto.delete(i);
     if (J.autox) for (const j of J.t.ataque[i]) if (J.est[j] === VACIA) { J.est[j] = X; J.auto.add(j); }
     return true;
@@ -325,6 +326,7 @@
     guardarHist();
     (paso.quitar || []).forEach((i) => { if (J.est[i] === REINA) quitarReina(i); else { J.est[i] = VACIA; J.auto.delete(i); } });
     Motor.aplicar(J.est, paso);
+    if (paso.colocar.length) J.ultimo = paso.colocar[0];
     J.paso = null;
     pintar();
     if (Motor.resuelto(J.t, J.est)) { $("#explicacion").classList.add("oculto"); return terminar(true); }
@@ -358,8 +360,8 @@
     }
     $("#fin-texto").textContent = txt;
     $("#fin-otro").textContent = J.diario || J.propio ? "Volver" : "Otro puzzle";
-    if (gano) $("#tablero").classList.add("ganado");
-    setTimeout(() => $("#fin").classList.remove("oculto"), gano ? 550 : 250);
+    const demora = gano ? celebrar() : 250;
+    setTimeout(() => $("#fin").classList.remove("oculto"), demora);
   }
   $("#fin-revisar").onclick = () => $("#fin").classList.add("oculto");
   $("#fin-otro").onclick = () => {
@@ -368,6 +370,84 @@
     const p = Motor.generar(id);
     empezar({ ...p, nivelId: id }, J.modo);
   };
+
+  // ---------- Celebración ----------
+  // Onda que sale desde la última reina, coronas que saltan una por una y confeti con los colores del tablero.
+  function celebrar() {
+    const tab = $("#tablero");
+    const N = J.p.N;
+    const origen = J.ultimo != null ? J.ultimo : Math.floor(N * N / 2);
+    const r0 = Math.floor(origen / N), c0 = origen % N;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let maxDist = 0;
+    [...tab.children].forEach((c, i) => {
+      const d = Math.hypot(Math.floor(i / N) - r0, (i % N) - c0);
+      maxDist = Math.max(maxDist, d);
+      c.style.setProperty("--d", Math.round(d * 55) + "ms");
+    });
+    const ondaMs = Math.round(maxDist * 55) + 500;
+    const reinas = [...tab.children].filter((c) => J.est[+c.dataset.i] === REINA)
+      .sort((a, b) => +a.dataset.i - +b.dataset.i);
+    reinas.forEach((c, k) => c.style.setProperty("--dq", ondaMs * 0.4 + k * 90 + "ms"));
+    tab.classList.remove("ganado");
+    void tab.offsetWidth;
+    tab.classList.add("ganado");
+    if (reduce) return 400;
+    setTimeout(() => confeti(tab), ondaMs * 0.4 + reinas.length * 90);
+    return ondaMs * 0.4 + reinas.length * 90 + 900;
+  }
+
+  function confeti(tab) {
+    const rect = tab.getBoundingClientRect();
+    const cv = document.createElement("canvas");
+    const dpr = window.devicePixelRatio || 1;
+    cv.className = "confeti";
+    cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
+    document.body.appendChild(cv);
+    const ctx = cv.getContext("2d");
+    ctx.scale(dpr, dpr);
+    const usados = [...new Set(J.p.regiones)].map((g) => COLORES[g % COLORES.length].hex);
+    const colores = usados.concat(["#18181b", "#ffffff"]);
+    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height * 0.45;
+    const piezas = Array.from({ length: 140 }, () => {
+      const ang = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.3;
+      const vel = 7 + Math.random() * 9;
+      return {
+        x: cx + (Math.random() - 0.5) * rect.width * 0.3, y: cy,
+        vx: Math.cos(ang) * vel, vy: Math.sin(ang) * vel,
+        w: 6 + Math.random() * 7, h: 4 + Math.random() * 5,
+        rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.35,
+        col: colores[Math.floor(Math.random() * colores.length)],
+        corona: Math.random() < 0.06,
+      };
+    });
+    const inicio = performance.now();
+    (function cuadro(ahora) {
+      const t = ahora - inicio;
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+      const alfa = Math.max(0, 1 - Math.max(0, t - 1400) / 700);
+      ctx.globalAlpha = alfa;
+      for (const p of piezas) {
+        p.vy += 0.32; p.vx *= 0.985; p.vy *= 0.985;
+        p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        if (p.corona) {
+          ctx.font = "16px sans-serif";
+          ctx.fillStyle = "#18181b";
+          ctx.fillText("♛", -8, 6);
+        } else {
+          ctx.fillStyle = p.col;
+          ctx.scale(1, Math.cos(p.rot * 2));
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        }
+        ctx.restore();
+      }
+      if (alfa > 0) requestAnimationFrame(cuadro);
+      else cv.remove();
+    })(inicio);
+  }
 
   function registrar(clave, gano, seg) {
     const stats = leer("stats", {});
