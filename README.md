@@ -11,7 +11,7 @@ Entrenador para puzzles de reinas (el estilo de Queens de LinkedIn), hecho con H
 ## Modos
 
 - **Práctica guiada.** El botón *Siguiente paso* encuentra la próxima deducción lógica desde tu tablero actual, la marca y explica por qué funciona. Si aplicas el paso, te muestra el siguiente. Si te equivocas, primero te dice qué corregir. Con el interruptor *Bloqueo automático* decides si al poner una reina se tachan solas las casillas que ataca.
-- **Competitivo.** Contra el reloj, sin pistas y con **3 vidas**: cada reina mal puesta te quita una. Guarda récord y promedio por dificultad.
+- **Competitivo.** Contra el reloj y sin pistas. Una reina mal puesta se rechaza y suma un error, pero nunca pierdes la partida. Guarda récord y promedio por dificultad.
 - **Desafío diario.** Un puzzle fijo por día, con archivo de los últimos 60 días. Lunes y martes fácil, miércoles y jueves medio, viernes y sábado difícil, domingo experto.
 - **Estadísticas.** Récords, promedios, racha del diario e historial de tiempos.
 

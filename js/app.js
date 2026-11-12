@@ -10,7 +10,6 @@
   const leer = (k, def) => { try { const v = localStorage.getItem("reinas:" + k); return v ? JSON.parse(v) : def; } catch (e) { return def; } };
 
   const prefs = leer("prefs", { autoxPractica: true });
-  const VIDAS = 3;
 
   // ---------- Utilidades ----------
   function aviso(txt) {
@@ -78,7 +77,7 @@
       est: new Array(puzzle.N * puzzle.N).fill(VACIA),
       hist: [],
       auto: new Set(), // ✕ puestas automáticamente por reinas
-      errores: 0, vidas: VIDAS,
+      errores: 0,
       autox: modo === "competitivo" ? false : prefs.autoxPractica,
       inicio: Date.now(), fin: null, terminado: false,
       paso: null,
@@ -90,7 +89,6 @@
     $("#b-pista").classList.toggle("oculto", comp);
     $("#op-bloqueo").classList.toggle("oculto", comp);
     $("#op-bloqueo input").checked = J.autox;
-    $("#j-errores").dataset.vidas = "";
     $(".controles").style.gridTemplateColumns = comp ? "1fr 1fr" : "";
     $("#fin").classList.add("oculto");
     modoFin(false);
@@ -113,10 +111,8 @@
     $("#j-reloj").textContent = fmt(tiempo());
     const e = $("#j-errores");
     if (J.modo === "competitivo") {
-      const html = Array.from({ length: VIDAS }, (_, k) => `<span class="vida${k < J.vidas ? "" : " perdida"}"></span>`).join("");
-      if (e.dataset.vidas !== String(J.vidas)) { e.innerHTML = html; e.dataset.vidas = J.vidas; }
-      e.setAttribute("aria-label", `${J.vidas} vidas`);
-    } else { e.innerHTML = ""; e.dataset.vidas = ""; }
+      e.textContent = J.errores ? `${J.errores} error${J.errores > 1 ? "es" : ""}` : "";
+    } else e.textContent = "";
   }
 
   // Letras para columnas y números para filas (solo en práctica)
@@ -173,21 +169,11 @@
     // devuelve false si el movimiento fue rechazado
     if (J.modo === "competitivo" && !J.p.solucion[i]) {
       J.errores++;
-      J.vidas--;
       actualizarReloj();
-      const corazon = $("#j-errores").children[J.vidas];
-      if (corazon) corazon.classList.add("rompe");
-      if (J.vidas <= 0) {
-        J.est[i] = REINA;
-        pintar();
-        $("#tablero").children[i].classList.add("mal");
-        terminar(false, "Te quedaste sin vidas.");
-        return false;
-      }
       const c = $("#tablero").children[i];
       c.classList.add("mal", "sacude");
       setTimeout(() => c.classList.remove("mal", "sacude"), 450);
-      aviso(J.vidas === 1 ? "Esa reina no va ahí. Te queda 1 vida." : `Esa reina no va ahí. Te quedan ${J.vidas} vidas.`);
+      aviso("Esa reina no va ahí");
       return false;
     }
     J.est[i] = REINA;
@@ -374,7 +360,7 @@
     $("#fin-emoji").classList.toggle("perdio", !gano);
     $("#fin-titulo").textContent = gano ? "¡Resuelto!" : "Perdiste";
     let txt = gano ? `Tiempo: ${fmt(seg)}` : motivo || "";
-    if (gano && J.errores) txt += `\nErrores: ${J.errores}`;
+    if (gano && comp) txt += J.errores ? `\n${J.errores} error${J.errores > 1 ? "es" : ""}` : "\nSin errores";
     const clave = J.diario ? "diario" : J.p.nivelId ? (comp ? "comp-" : "prac-") + J.p.nivelId : null;
     if (clave) {
       const r = registrar(clave, gano, seg);
