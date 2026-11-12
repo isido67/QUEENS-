@@ -85,6 +85,7 @@
       p: puzzle, t, modo,
       est: new Array(puzzle.N * puzzle.N).fill(VACIA),
       hist: [],
+      auto: new Set(), // ✕ puestas automáticamente por reinas
       errores: 0, penal: 0,
       regla: prefs.regla,
       autox: modo === "competitivo" ? prefs.autoxComp : prefs.autoxPractica,
@@ -155,7 +156,7 @@
   }
 
   function guardarHist() {
-    J.hist.push(J.est.slice());
+    J.hist.push({ est: J.est.slice(), auto: new Set(J.auto) });
     if (J.hist.length > 300) J.hist.shift();
   }
 
@@ -179,8 +180,22 @@
       return false;
     }
     J.est[i] = REINA;
-    if (J.autox) for (const j of J.t.ataque[i]) if (J.est[j] === VACIA) J.est[j] = X;
+    J.auto.delete(i);
+    if (J.autox) for (const j of J.t.ataque[i]) if (J.est[j] === VACIA) { J.est[j] = X; J.auto.add(j); }
     return true;
+  }
+
+  // Al quitar una reina, se desbloquean las ✕ automáticas que ninguna otra reina sigue cubriendo
+  function quitarReina(i) {
+    J.est[i] = VACIA;
+    const reinas = [];
+    for (let k = 0; k < J.est.length; k++) if (J.est[k] === REINA) reinas.push(k);
+    for (const j of J.t.ataque[i]) {
+      if (!J.auto.has(j) || J.est[j] !== X) continue;
+      if (reinas.some((q) => J.t.ataque[q].includes(j))) continue;
+      J.est[j] = VACIA;
+      J.auto.delete(j);
+    }
   }
 
   function tocar(i) {
@@ -189,7 +204,7 @@
     const v = J.est[i];
     if (v === VACIA) J.est[i] = X;
     else if (v === X) { if (!ponerReina(i)) { if (!J.terminado) J.est[i] = X; J.hist.pop(); } }
-    else J.est[i] = VACIA;
+    else quitarReina(i);
     despuesDeMover();
   }
 
@@ -225,11 +240,11 @@
         arrastrando = true;
         guardarHist();
         if (marcar && J.est[ini] === VACIA) J.est[ini] = X;
-        if (!marcar && J.est[ini] === X) J.est[ini] = VACIA;
+        if (!marcar && J.est[ini] === X) { J.est[ini] = VACIA; J.auto.delete(ini); }
       }
       visitadas.add(i);
       if (marcar && J.est[i] === VACIA) J.est[i] = X;
-      if (!marcar && J.est[i] === X) J.est[i] = VACIA;
+      if (!marcar && J.est[i] === X) { J.est[i] = VACIA; J.auto.delete(i); }
       pintar();
     });
     const soltar = () => {
@@ -244,13 +259,16 @@
 
   $("#b-deshacer").onclick = () => {
     if (!J || J.terminado || !J.hist.length) return;
-    J.est = J.hist.pop();
+    const h = J.hist.pop();
+    J.est = h.est;
+    J.auto = h.auto;
     despuesDeMover();
   };
   $("#b-limpiar").onclick = () => {
     if (!J || J.terminado) return;
     guardarHist();
     J.est.fill(VACIA);
+    J.auto.clear();
     despuesDeMover();
   };
   $("#salir").onclick = () => {
@@ -305,7 +323,7 @@
     const paso = J && J.paso;
     if (!paso) return;
     guardarHist();
-    (paso.quitar || []).forEach((i) => (J.est[i] = VACIA));
+    (paso.quitar || []).forEach((i) => { if (J.est[i] === REINA) quitarReina(i); else { J.est[i] = VACIA; J.auto.delete(i); } });
     Motor.aplicar(J.est, paso);
     J.paso = null;
     pintar();
