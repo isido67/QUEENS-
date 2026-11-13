@@ -111,7 +111,7 @@
     $("#j-reloj").textContent = fmt(tiempo());
     const e = $("#j-errores");
     if (J.modo === "competitivo") {
-      e.textContent = J.errores ? `${J.errores} error${J.errores > 1 ? "es" : ""}` : "";
+      e.textContent = "";
     } else e.textContent = "";
   }
 
@@ -152,8 +152,7 @@
         c.innerHTML = v === REINA ? '<span class="q"></span>' : v === X ? '<span class="x">×</span>' : "";
         c.dataset.v = v;
       }
-      const errorPractica = J.modo !== "competitivo" && v === REINA && !J.p.solucion[i];
-      c.classList.toggle("mal", malas.has(i) || errorPractica);
+      c.classList.toggle("mal", malas.has(i)); // solo choques visibles entre reinas
       c.classList.toggle("foco", !!paso && paso.foco.includes(i));
       c.classList.toggle("va-x", !!paso && paso.eliminar.includes(i) && v === VACIA);
       c.classList.toggle("va-q", !!paso && paso.colocar.includes(i) && v !== REINA);
@@ -166,16 +165,7 @@
   }
 
   function ponerReina(i) {
-    // devuelve false si el movimiento fue rechazado
-    if (J.modo === "competitivo" && !J.p.solucion[i]) {
-      J.errores++;
-      actualizarReloj();
-      const c = $("#tablero").children[i];
-      c.classList.add("mal", "sacude");
-      setTimeout(() => c.classList.remove("mal", "sacude"), 450);
-      aviso("Esa reina no va ahí");
-      return false;
-    }
+    // Se acepta cualquier reina: el jugador descubre sus errores cuando las reinas dejan de encajar
     J.est[i] = REINA;
     J.ultimo = i;
     J.auto.delete(i);
@@ -360,7 +350,6 @@
     $("#fin-emoji").classList.toggle("perdio", !gano);
     $("#fin-titulo").textContent = gano ? "¡Resuelto!" : "Perdiste";
     let txt = gano ? `Tiempo: ${fmt(seg)}` : motivo || "";
-    if (gano && comp) txt += J.errores ? `\n${J.errores} error${J.errores > 1 ? "es" : ""}` : "\nSin errores";
     const clave = J.diario ? "diario" : J.p.nivelId ? (comp ? "comp-" : "prac-") + J.p.nivelId : null;
     if (clave) {
       const r = registrar(clave, gano, seg);
